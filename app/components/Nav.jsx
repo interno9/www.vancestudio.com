@@ -4,7 +4,7 @@ import React, { useState } from "react";
 export default function Nav() {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <nav className="text-xs text-center font-bold p-2 top-2 left-1/2 -translate-x-1/2 backdrop-blur-xl bg-white/5 fixed z-30 flex flex-col rounded-lg origin-top transition-transform duration-300">
+    <nav className="text-xs text-center font-bold p-2 top-2 left-1/2 -translate-x-1/2 backdrop-blur-lg bg-white/5 fixed z-30 flex flex-col rounded-md origin-top transition-transform duration-300">
       <button
         onClick={() => {
           setIsOpen((prev) => !prev);
@@ -15,9 +15,7 @@ export default function Nav() {
       </button>
       <div
         className={`overflow-hidden transition-all duration-300 ease-out ${
-          isOpen
-            ? "max-h-[1200px] opacity-100 scale-100 mt-1"
-            : "max-h-0 opacity-0 scale-95"
+          isOpen ? "max-h-[1200px] opacity-100 scale-100" : "max-h-0 opacity-0"
         }`}
       >
         <p className="px-2 origin-top">

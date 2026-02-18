@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { client } from "@/sanity/lib/client";
 import Swiperino from "./components/Swiperino";
 
@@ -28,15 +28,26 @@ const detailQuery = `*[_type == "contentDocument" && _id == $id][0]{
 export default function Page() {
   const [data, setData] = useState([]);
   const [selectedDoc, setSelectedDoc] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const selectedId = searchParams.get("id");
 
   useEffect(() => {
     client.fetch(query).then((result) => {
       setData(result || []);
     });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncSelectedId = () => {
+      const params = new URLSearchParams(window.location.search);
+      setSelectedId(params.get("id"));
+    };
+
+    syncSelectedId();
+    window.addEventListener("popstate", syncSelectedId);
+    return () => window.removeEventListener("popstate", syncSelectedId);
   }, []);
 
   useEffect(() => {
@@ -51,16 +62,20 @@ export default function Page() {
   }, [selectedId]);
 
   const handleImageClick = (id) => {
-    const params = new URLSearchParams(searchParams.toString());
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
     params.set("id", id);
     router.push(`${pathname}?${params.toString()}`);
+    setSelectedId(id);
   };
 
   const handleCloseSwiper = () => {
-    const params = new URLSearchParams(searchParams.toString());
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
     params.delete("id");
     const next = params.toString();
     router.push(next ? `${pathname}?${next}` : pathname);
+    setSelectedId(null);
   };
 
   return (
@@ -88,7 +103,7 @@ export default function Page() {
       <Swiperino
         isOpen={Boolean(selectedId)}
         onClose={handleCloseSwiper}
-        slides={selectedDoc?.items}
+        slides={selectedDoc?.items || []}
       />
     </>
   );

@@ -1,21 +1,37 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
+import { FreeMode, Mousewheel } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import { X } from "lucide-react";
 
 export default function Swiperino({ isOpen, onClose, slides = [] }) {
   const swiperRef = useRef(null);
-  const pointerStart = useRef({ x: 0, y: 0 });
   const [cursorClass, setCursorClass] = useState("cursor-e-resize");
+  const canLoop = slides.length > 1;
+  const LOOP_COPIES = 5;
+  const virtualSlides = useMemo(() => {
+    if (!canLoop) return slides;
+    return Array.from({ length: LOOP_COPIES }, () => slides).flat();
+  }, [slides, canLoop]);
+  const loopOffset = canLoop ? slides.length * Math.floor(LOOP_COPIES / 2) : 0;
+
+  const recenterIfNeeded = (swiper) => {
+    if (!canLoop || !slides.length) return;
+    const safeMin = slides.length;
+    const safeMax = virtualSlides.length - slides.length;
+    const idx = swiper.activeIndex;
+    if (idx >= safeMin && idx < safeMax) return;
+
+    const normalized = ((idx % slides.length) + slides.length) % slides.length;
+    swiper.slideTo(loopOffset + normalized, 0, false);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (event) => {
-      if (event.key === "ArrowLeft") swiperRef.current?.slidePrev();
-      if (event.key === "ArrowRight") swiperRef.current?.slideNext();
       if (event.key === "Escape") onClose?.();
     };
 
@@ -26,49 +42,51 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
   if (!isOpen) return null;
 
   return (
-    <div
-      className={`fixed inset-0 z-40 bg-white ${cursorClass}`}
-      onMouseMove={(event) => {
-        setCursorClass(
-          event.clientX < window.innerWidth / 2
-            ? "cursor-w-resize"
-            : "cursor-e-resize",
-        );
-      }}
-      onPointerDown={(event) => {
-        pointerStart.current = { x: event.clientX, y: event.clientY };
-      }}
-      onPointerUp={(event) => {
-        const dx = Math.abs(event.clientX - pointerStart.current.x);
-        const dy = Math.abs(event.clientY - pointerStart.current.y);
-        if (dx > 8 || dy > 8) return;
-        if (event.clientX < window.innerWidth / 2)
-          swiperRef.current?.slidePrev();
-        else swiperRef.current?.slideNext();
-      }}
-    >
+    <div className={`fixed inset-0 z-40 bg-white ${cursorClass}`}>
       <button
         type="button"
         onClick={onClose}
         aria-label="Close swiper"
         onPointerUp={(event) => event.stopPropagation()}
-        className="fixed left-1/2 -translate-x-1/2 top-2 z-50 font-bold hover:cursor-pointer opacity-30 hover:opacity-100 transition-opacity"
+        className="fixed left-1/2 -translate-x-1/2 top-2 z-50 hover:cursor-pointer opacity-30 hover:opacity-100 transition-opacity"
       >
         <X size={22} strokeWidth={2} />
       </button>
 
       <Swiper
+        key={`swiper-${slides.length}-${canLoop ? "loop" : "single"}`}
+        modules={[FreeMode, Mousewheel]}
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
+          if (canLoop) swiper.slideTo(loopOffset, 0, false);
         }}
-        loop={slides.length > 1}
+        onSlideChange={(swiper) => {
+          recenterIfNeeded(swiper);
+        }}
+        onTouchEnd={(swiper) => recenterIfNeeded(swiper)}
+        onTransitionEnd={(swiper) => recenterIfNeeded(swiper)}
+        loop={false}
         slidesPerView="auto"
+        freeMode={{
+          enabled: true,
+          momentum: true,
+          momentumRatio: 0.8,
+          momentumVelocityRatio: 0.8,
+          minimumVelocity: 0.05,
+          momentumBounce: false,
+          sticky: false,
+        }}
+        speed={700}
+        mousewheel={{ forceToAxis: false, releaseOnEdges: false }}
+        resistanceRatio={0}
+        watchSlidesProgress
         className="h-screen"
         spaceBetween={0}
+        centeredSlides={true}
       >
-        {slides.map((slide) => (
+        {virtualSlides.map((slide, index) => (
           <SwiperSlide
-            key={slide._key || slide.url}
+            key={`${slide._key || slide.url}-${index}`}
             className="!flex !w-auto !shrink-0 h-screen items-center justify-center"
           >
             <div className="flex h-screen w-auto items-center justify-center">

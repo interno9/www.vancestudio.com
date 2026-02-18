@@ -241,11 +241,11 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
       ref={tileRef}
       onClick={() => onClick(id)}
       type="button"
-      className="group overflow-hidden focus:outline-none focus-visible:outline-none hover:cursor-pointer"
+      className="relative group overflow-hidden focus:outline-none focus-visible:outline-none hover:cursor-pointer"
     >
       {isVideo ? (
         <video
-          className="w-full aspect-square object-cover group-hover:blur-md group-hover:scale-110 transition-all duration-200"
+          className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-200"
           src={url}
           muted
           loop
@@ -256,7 +256,7 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
         />
       ) : (
         <Image
-          className="w-full aspect-square object-cover group-hover:blur-md group-hover:scale-105 transition-all duration-200"
+          className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-200"
           src={url}
           alt={title || "Gallery image"}
           width={width || 1200}
@@ -266,6 +266,10 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
           loading="lazy"
         />
       )}
+
+      <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-1000 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-black">
+        {title}
+      </span>
     </button>
   );
 }

@@ -4,12 +4,12 @@ import React, { useState } from "react";
 export default function Nav() {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <nav className="text-xs text-center font-bold p-2 top-2 left-1/2 -translate-x-1/2 backdrop-blur-lg bg-white/5 fixed z-30 flex flex-col rounded-md origin-top transition-transform duration-300">
+    <nav className="text-xs text-center p-2 top-2 left-1/2 -translate-x-1/2 backdrop-blur-lg bg-white/5 fixed z-30 flex flex-col rounded-md origin-top transition-transform duration-300">
       <button
         onClick={() => {
           setIsOpen((prev) => !prev);
         }}
-        className="hover:cursor-pointer"
+        className="hover:cursor-pointer uppercase"
       >
         About
       </button>
@@ -18,7 +18,7 @@ export default function Nav() {
           isOpen ? "max-h-[1200px] opacity-100 scale-100" : "max-h-0 opacity-0"
         }`}
       >
-        <p className="px-2 origin-top">
+        <p className="px-2 origin-top tracking-tight">
           <br />
           SHB <br />
           Packaging <br />

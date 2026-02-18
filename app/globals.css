@@ -1,9 +1,14 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "SuisseIntlMono";
+  src: url("../public/font/SuisseIntlMono-Bold.otf");
+}
+
 body {
   background: #ffffff;
   color: #000000;
-  font-family: Helvetica, sans-serif;
+  font-family: "SuisseIntlMono", sans-serif;
 }
 
 body:has(#sanity) nav {

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
+import { X } from "lucide-react";
 
 export default function Swiperino({ isOpen, onClose, slides = [] }) {
   const swiperRef = useRef(null);
@@ -31,7 +32,7 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
         setCursorClass(
           event.clientX < window.innerWidth / 2
             ? "cursor-w-resize"
-            : "cursor-e-resize"
+            : "cursor-e-resize",
         );
       }}
       onPointerDown={(event) => {
@@ -41,7 +42,8 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
         const dx = Math.abs(event.clientX - pointerStart.current.x);
         const dy = Math.abs(event.clientY - pointerStart.current.y);
         if (dx > 8 || dy > 8) return;
-        if (event.clientX < window.innerWidth / 2) swiperRef.current?.slidePrev();
+        if (event.clientX < window.innerWidth / 2)
+          swiperRef.current?.slidePrev();
         else swiperRef.current?.slideNext();
       }}
     >
@@ -50,9 +52,9 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
         onClick={onClose}
         aria-label="Close swiper"
         onPointerUp={(event) => event.stopPropagation()}
-        className="absolute right-4 top-4 z-50"
+        className="absolute left-1/2 -translate-x-1/2 top-2 z-50 font-bold hover:cursor-pointer opacity-30 hover:opacity-100 transition-opacity"
       >
-        Close
+        <X size={22} strokeWidth={2} />
       </button>
 
       <Swiper

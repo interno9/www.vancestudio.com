@@ -13,21 +13,21 @@ export default function Nav({ aboutText = "" }) {
     >
       about
       <div
-        className={`overflow-hidden transition-all duration-300 ease-out ${
-          isOpen ? "max-h-[1200px] opacity-100 scale-100" : "max-h-0 opacity-0"
+        className={`grid overflow-hidden transition-all duration-300 ease-in-out ${
+          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         }`}
       >
-        <div className="px-2 max-w-lg pt-2 origin-top whitespace-pre-wrap">
-          {aboutText}
+        <div className="min-h-0">
+          <div className="px-2 max-w-lg pt-2 whitespace-pre-wrap">{aboutText}</div>
+          <a
+            href="https://interno9.ch"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline"
+          >
+            Developed by interno9
+          </a>
         </div>
-        <a
-          href="https://interno9.ch"
-          target="_blank"
-          rel="noreferrer"
-          className="hover:underline"
-        >
-          Developed by interno9
-        </a>
       </div>
     </nav>
   );

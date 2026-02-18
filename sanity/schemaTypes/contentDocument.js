@@ -50,14 +50,28 @@ export const contentDocument = defineType({
               type: 'text',
               rows: 4,
             }),
+            defineField({
+              name: 'videoPreviewImage',
+              title: 'Video Preview Image',
+              type: 'image',
+              options: {hotspot: true},
+              hidden: ({parent}) => {
+                const ref = parent?.file?.asset?._ref || ''
+                const ext = ref.split('-').pop()?.toLowerCase()
+                const videoExts = ['mp4', 'mov', 'webm', 'm4v', 'avi', 'mkv', 'wmv']
+                return !videoExts.includes(ext)
+              },
+            }),
           ],
           preview: {
             select: {
               title: 'text',
               fileName: 'file.asset.originalFilename',
               mimeType: 'file.asset.mimeType',
+              fileUrl: 'file.asset.url',
+              videoPreviewImage: 'videoPreviewImage',
             },
-            prepare({title, fileName, mimeType}) {
+            prepare({title, fileName, mimeType, fileUrl, videoPreviewImage}) {
               const fileType = mimeType?.startsWith('video/')
                 ? 'Video'
                 : mimeType?.startsWith('image/')
@@ -67,6 +81,18 @@ export const contentDocument = defineType({
               return {
                 title: title || 'Untitled item',
                 subtitle: fileName ? `${fileType}: ${fileName}` : 'No file selected',
+                media:
+                  mimeType?.startsWith('video/') && videoPreviewImage
+                    ? videoPreviewImage
+                    : mimeType?.startsWith('image/') && fileUrl
+                      ? () => (
+                          <img
+                            src={fileUrl}
+                            alt={fileName || 'Preview'}
+                            style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                          />
+                        )
+                      : undefined,
               }
             },
           },

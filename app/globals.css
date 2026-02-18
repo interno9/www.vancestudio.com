@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-html {
-  overflow: hidden;
-}
-
 body {
   background: #ffffff;
   color: #000000;
@@ -27,4 +23,17 @@ img {
   background: transparent !important;
   border: none !important;
   outline: none !important;
+}
+
+main {
+  animation: 0.5s fadeIn ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

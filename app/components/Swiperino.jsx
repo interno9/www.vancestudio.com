@@ -27,7 +27,7 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
 
   return (
     <div
-      className={`fixed inset-0 z-50 bg-white ${cursorClass}`}
+      className={`fixed inset-0 z-40 bg-white ${cursorClass}`}
       onMouseMove={(event) => {
         setCursorClass(
           event.clientX < window.innerWidth / 2
@@ -52,7 +52,7 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
         onClick={onClose}
         aria-label="Close swiper"
         onPointerUp={(event) => event.stopPropagation()}
-        className="absolute left-1/2 -translate-x-1/2 top-2 z-50 font-bold hover:cursor-pointer opacity-30 hover:opacity-100 transition-opacity"
+        className="fixed left-1/2 -translate-x-1/2 top-2 z-50 font-bold hover:cursor-pointer opacity-30 hover:opacity-100 transition-opacity"
       >
         <X size={22} strokeWidth={2} />
       </button>

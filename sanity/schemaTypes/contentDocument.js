@@ -27,32 +27,21 @@ export const contentDocument = defineType({
           title: 'Media + Text Item',
           validation: (Rule) =>
             Rule.custom((item) => {
-              const hasImage = Boolean(item?.image)
-              const hasVideo = Boolean(item?.video)
+              const hasFile = Boolean(item?.file)
 
-              if (!hasImage && !hasVideo) {
-                return 'Add either an image or a video.'
-              }
-
-              if (hasImage && hasVideo) {
-                return 'Use either an image or a video, not both.'
+              if (!hasFile) {
+                return 'Add a file.'
               }
 
               return true
             }),
           fields: [
             defineField({
-              name: 'image',
-              title: 'Image',
-              type: 'image',
-              options: {hotspot: true},
-            }),
-            defineField({
-              name: 'video',
-              title: 'Video',
+              name: 'file',
+              title: 'File',
               type: 'file',
               options: {
-                accept: 'video/*',
+                accept: 'image/*,video/*',
               },
             }),
             defineField({
@@ -65,14 +54,19 @@ export const contentDocument = defineType({
           preview: {
             select: {
               title: 'text',
-              image: 'image',
-              videoName: 'video.asset.originalFilename',
+              fileName: 'file.asset.originalFilename',
+              mimeType: 'file.asset.mimeType',
             },
-            prepare({title, image, videoName}) {
+            prepare({title, fileName, mimeType}) {
+              const fileType = mimeType?.startsWith('video/')
+                ? 'Video'
+                : mimeType?.startsWith('image/')
+                  ? 'Image'
+                  : 'File'
+
               return {
                 title: title || 'Untitled item',
-                subtitle: videoName ? `Video: ${videoName}` : 'Image',
-                media: image,
+                subtitle: fileName ? `${fileType}: ${fileName}` : 'No file selected',
               }
             },
           },

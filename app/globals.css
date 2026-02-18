@@ -18,3 +18,13 @@ img {
   -webkit-user-select: none;
   -ms-user-select: none;
 }
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+*::selection {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+}

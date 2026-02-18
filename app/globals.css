@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: "SuisseIntlMono";
-  src: url("../public/font/SuisseIntlMono-Bold.otf");
+  src: url("../public/font/SuisseIntlMono-Bold.otf") format("opentype");
 }
 
 body {

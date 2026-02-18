@@ -1,14 +1,11 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { FreeMode, Mousewheel } from "swiper/modules";
 import "swiper/css";
-import "swiper/css/navigation";
 import { X } from "lucide-react";
 
 export default function Swiperino({ isOpen, onClose, slides = [] }) {
-  const swiperRef = useRef(null);
-  const [cursorClass, setCursorClass] = useState("cursor-e-resize");
   const canLoop = slides.length > 1;
   const LOOP_COPIES = 5;
   const virtualSlides = useMemo(() => {
@@ -42,12 +39,11 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-40 bg-white ${cursorClass}`}>
+    <div className={`fixed inset-0 z-40 bg-white`}>
       <button
         type="button"
         onClick={onClose}
         aria-label="Close swiper"
-        onPointerUp={(event) => event.stopPropagation()}
         className="fixed left-1/2 -translate-x-1/2 top-2 z-50 hover:cursor-pointer opacity-30 hover:opacity-100 transition-opacity"
       >
         <X size={22} strokeWidth={2} />
@@ -57,12 +53,9 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
         key={`swiper-${slides.length}-${canLoop ? "loop" : "single"}`}
         modules={[FreeMode, Mousewheel]}
         onSwiper={(swiper) => {
-          swiperRef.current = swiper;
           if (canLoop) swiper.slideTo(loopOffset, 0, false);
         }}
-        onSlideChange={(swiper) => {
-          recenterIfNeeded(swiper);
-        }}
+        onSlideChange={recenterIfNeeded}
         onTouchEnd={(swiper) => recenterIfNeeded(swiper)}
         onTransitionEnd={(swiper) => recenterIfNeeded(swiper)}
         loop={false}
@@ -82,7 +75,6 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
         watchSlidesProgress
         className="h-screen"
         spaceBetween={0}
-        centeredSlides={true}
       >
         {virtualSlides.map((slide, index) => (
           <SwiperSlide

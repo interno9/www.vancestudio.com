@@ -79,6 +79,20 @@ export default function Page() {
     };
   }, [selectedId]);
 
+  useEffect(() => {
+    if (!selectedId) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+    };
+  }, [selectedId]);
+
   const handleImageClick = useCallback(
     (id) => {
       const params = new URLSearchParams(window.location.search);
@@ -267,7 +281,7 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
         />
       )}
 
-      <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-1000 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-black">
+      <span className="uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-1000 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         {title}
       </span>
     </button>

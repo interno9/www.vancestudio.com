@@ -82,23 +82,26 @@ export default function Page() {
     setSelectedId(null);
   };
 
-  const appendRandomBatch = useCallback((batchCount = 1) => {
-    if (!data.length) return;
-    const nextItems = [];
+  const appendRandomBatch = useCallback(
+    (batchCount = 1) => {
+      if (!data.length) return;
+      const nextItems = [];
 
-    for (let batchOffset = 0; batchOffset < batchCount; batchOffset += 1) {
-      const batchId = batchRef.current;
-      batchRef.current += 1;
-      const randomBatch = shuffleArray(data).map((item, index) => ({
-        ...item,
-        feedKey: `${item._id}-${batchId}-${index}`,
-        originalId: item._id,
-      }));
-      nextItems.push(...randomBatch);
-    }
+      for (let batchOffset = 0; batchOffset < batchCount; batchOffset += 1) {
+        const batchId = batchRef.current;
+        batchRef.current += 1;
+        const randomBatch = shuffleArray(data).map((item, index) => ({
+          ...item,
+          feedKey: `${item._id}-${batchId}-${index}`,
+          originalId: item._id,
+        }));
+        nextItems.push(...randomBatch);
+      }
 
-    setFeedItems((prev) => [...prev, ...nextItems]);
-  }, [data]);
+      setFeedItems((prev) => [...prev, ...nextItems]);
+    },
+    [data],
+  );
 
   useEffect(() => {
     if (!data.length) return;
@@ -225,9 +228,9 @@ function GalleryTile({ id, title, url, width, height, onClick }) {
       className="group overflow-hidden focus:outline-none focus-visible:outline-none hover:cursor-pointer"
     >
       <Image
-        className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all"
+        className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-200"
         src={url}
-        alt={title || "Gallery image"}
+        alt={title}
         width={width}
         height={height}
         sizes="(min-width: 768px) 33.33vw, 100vw"

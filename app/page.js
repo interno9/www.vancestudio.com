@@ -6,10 +6,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { client } from "@/sanity/lib/client";
 import Swiperino from "./components/Swiperino";
 
+const SENTINEL_ROOT_MARGIN = "1200px 0px";
+const TILE_ROOT_MARGIN = "150px 0px";
+const SENTINEL_BATCH_COUNT = 3;
+const BUFFER_BATCH_COUNT = 4;
+const MIN_SCROLL_BUFFER_VIEWPORTS = 2;
+
 const query = `*[_type == "contentDocument"]{
   _id,
   title,
   "url": image.asset->url,
+  "mimeType": image.asset->mimeType,
   "width": image.asset->metadata.dimensions.width,
   "height": image.asset->metadata.dimensions.height
 }`;
@@ -37,13 +44,16 @@ export default function Page() {
   const pathname = usePathname();
 
   useEffect(() => {
+    let isMounted = true;
     client.fetch(query).then((result) => {
-      setData(result || []);
+      if (isMounted) setData(result || []);
     });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
     const syncSelectedId = () => {
       const params = new URLSearchParams(window.location.search);
       setSelectedId(params.get("id"));
@@ -60,44 +70,42 @@ export default function Page() {
       return;
     }
 
+    let isMounted = true;
     client.fetch(detailQuery, { id: selectedId }).then((result) => {
-      setSelectedDoc(result || null);
+      if (isMounted) setSelectedDoc(result || null);
     });
+    return () => {
+      isMounted = false;
+    };
   }, [selectedId]);
 
-  const handleImageClick = (id) => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    params.set("id", id);
-    router.push(`${pathname}?${params.toString()}`);
-    setSelectedId(id);
-  };
+  const handleImageClick = useCallback(
+    (id) => {
+      const params = new URLSearchParams(window.location.search);
+      params.set("id", id);
+      const next = params.toString();
+      router.push(next ? `${pathname}?${next}` : pathname);
+      setSelectedId(id);
+    },
+    [pathname, router],
+  );
 
-  const handleCloseSwiper = () => {
-    if (typeof window === "undefined") return;
+  const handleCloseSwiper = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
     params.delete("id");
     const next = params.toString();
     router.push(next ? `${pathname}?${next}` : pathname);
     setSelectedId(null);
-  };
+  }, [pathname, router]);
 
   const appendRandomBatch = useCallback(
     (batchCount = 1) => {
       if (!data.length) return;
-      const nextItems = [];
-
-      for (let batchOffset = 0; batchOffset < batchCount; batchOffset += 1) {
+      const nextItems = Array.from({ length: batchCount }, () => {
         const batchId = batchRef.current;
         batchRef.current += 1;
-        const randomBatch = shuffleArray(data).map((item, index) => ({
-          ...item,
-          feedKey: `${item._id}-${batchId}-${index}`,
-          originalId: item._id,
-        }));
-        nextItems.push(...randomBatch);
-      }
-
+        return createFeedBatch(data, batchId);
+      }).flat();
       setFeedItems((prev) => [...prev, ...nextItems]);
     },
     [data],
@@ -106,11 +114,7 @@ export default function Page() {
   useEffect(() => {
     if (!data.length) return;
     batchRef.current = 0;
-    const firstBatch = shuffleArray(data).map((item, index) => ({
-      ...item,
-      feedKey: `${item._id}-0-${index}`,
-      originalId: item._id,
-    }));
+    const firstBatch = createFeedBatch(data, 0);
     batchRef.current = 1;
     setFeedItems(firstBatch);
   }, [data]);
@@ -125,13 +129,13 @@ export default function Page() {
         if (isAppendingRef.current) return;
         isAppendingRef.current = true;
         observer.unobserve(entry.target);
-        appendRandomBatch(3);
+        appendRandomBatch(SENTINEL_BATCH_COUNT);
         requestAnimationFrame(() => {
           isAppendingRef.current = false;
           observer.observe(entry.target);
         });
       },
-      { rootMargin: "1200px 0px" },
+      { rootMargin: SENTINEL_ROOT_MARGIN },
     );
 
     observer.observe(node);
@@ -146,9 +150,9 @@ export default function Page() {
       const remaining =
         document.documentElement.scrollHeight -
         (window.scrollY + window.innerHeight);
-      if (remaining > window.innerHeight * 2) return;
+      if (remaining > window.innerHeight * MIN_SCROLL_BUFFER_VIEWPORTS) return;
       isAppendingRef.current = true;
-      appendRandomBatch(4);
+      appendRandomBatch(BUFFER_BATCH_COUNT);
       requestAnimationFrame(() => {
         isAppendingRef.current = false;
       });
@@ -167,17 +171,20 @@ export default function Page() {
   return (
     <>
       <main className="grid grid-cols-1 md:grid-cols-3">
-        {feedItems.map(({ feedKey, originalId, title, url, width, height }) => (
-          <GalleryTile
-            key={feedKey}
-            id={originalId}
-            title={title}
-            url={url}
-            width={width}
-            height={height}
-            onClick={handleImageClick}
-          />
-        ))}
+        {feedItems.map(
+          ({ feedKey, originalId, title, url, mimeType, width, height }) => (
+            <GalleryTile
+              key={feedKey}
+              id={originalId}
+              title={title}
+              url={url}
+              mimeType={mimeType}
+              width={width}
+              height={height}
+              onClick={handleImageClick}
+            />
+          ),
+        )}
       </main>
       <div ref={sentinelRef} className="h-16 w-full" aria-hidden="true" />
       <Swiperino
@@ -198,9 +205,18 @@ function shuffleArray(items = []) {
   return arr;
 }
 
-function GalleryTile({ id, title, url, width, height, onClick }) {
+function createFeedBatch(items, batchId) {
+  return shuffleArray(items).map((item, index) => ({
+    ...item,
+    feedKey: `${item._id}-${batchId}-${index}`,
+    originalId: item._id,
+  }));
+}
+
+function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
   const tileRef = useRef(null);
   const [isInView, setIsInView] = useState(false);
+  const isVideo = mimeType?.startsWith("video/");
 
   useEffect(() => {
     const node = tileRef.current;
@@ -213,7 +229,7 @@ function GalleryTile({ id, title, url, width, height, onClick }) {
           observer.disconnect();
         }
       },
-      { rootMargin: "150px 0px" },
+      { rootMargin: TILE_ROOT_MARGIN },
     );
 
     observer.observe(node);
@@ -227,16 +243,29 @@ function GalleryTile({ id, title, url, width, height, onClick }) {
       type="button"
       className="group overflow-hidden focus:outline-none focus-visible:outline-none hover:cursor-pointer"
     >
-      <Image
-        className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-200"
-        src={url}
-        alt={title}
-        width={width}
-        height={height}
-        sizes="(min-width: 768px) 33.33vw, 100vw"
-        quality={isInView ? 85 : 10}
-        loading="lazy"
-      />
+      {isVideo ? (
+        <video
+          className="w-full aspect-square object-cover group-hover:blur-md group-hover:scale-110 transition-all duration-200"
+          src={url}
+          muted
+          loop
+          autoPlay={isInView}
+          playsInline
+          controls={false}
+          preload={isInView ? "metadata" : "none"}
+        />
+      ) : (
+        <Image
+          className="w-full aspect-square object-cover group-hover:blur-md group-hover:scale-105 transition-all duration-200"
+          src={url}
+          alt={title || "Gallery image"}
+          width={width || 1200}
+          height={height || 1200}
+          sizes="(min-width: 768px) 33.33vw, 100vw"
+          quality={isInView ? 85 : 10}
+          loading="lazy"
+        />
+      )}
     </button>
   );
 }

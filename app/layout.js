@@ -1,3 +1,4 @@
+import Nav from "./components/Nav";
 import SmoothScroll from "./components/SmoothScroll";
 import "./globals.css";
 
@@ -10,6 +11,7 @@ export default function RootLayout({ children }) {
   return (
     <html suppressHydrationWarning lang="en">
       <body suppressHydrationWarning className={`antialiased`}>
+        <Nav />
         <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>

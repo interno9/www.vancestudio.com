@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@sanity/ui": "^3.1.11",
     "@sanity/vision": "^5.10.0",
     "@studio-freight/lenis": "^1.0.42",
     "lucide-react": "^0.574.0",

@@ -8,7 +8,7 @@
 body {
   background: #ffffff;
   color: #000000;
-  font-family: "SuisseIntlMono", sans-serif;
+  font-family: "SuisseIntlMono", monospace;
 }
 
 body:has(#sanity) nav {

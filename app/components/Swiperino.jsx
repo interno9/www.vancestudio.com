@@ -5,7 +5,7 @@ import { FreeMode, Mousewheel } from "swiper/modules";
 import "swiper/css";
 import { X } from "lucide-react";
 
-export default function Swiperino({ isOpen, onClose, slides = [] }) {
+export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" }) {
   const canLoop = slides.length > 1;
   const LOOP_COPIES = 5;
   const virtualSlides = useMemo(() => {
@@ -94,7 +94,7 @@ export default function Swiperino({ isOpen, onClose, slides = [] }) {
               ) : (
                 <img
                   src={slide.url}
-                  alt={slide.text || "Slide image"}
+                  alt={docTitle || "Slide image"}
                   className="h-screen w-auto max-w-full object-contain"
                 />
               )}

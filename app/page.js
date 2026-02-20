@@ -26,9 +26,8 @@ const detailQuery = `*[_type == "contentDocument" && _id == $id][0]{
   title,
   items[]{
     _key,
-    text,
-    "url": file.asset->url,
-    "mimeType": file.asset->mimeType
+    "url": coalesce(asset->url, file.asset->url),
+    "mimeType": coalesce(asset->mimeType, file.asset->mimeType)
   }
 }`;
 
@@ -205,6 +204,7 @@ export default function Page() {
         isOpen={Boolean(selectedId)}
         onClose={handleCloseSwiper}
         slides={selectedDoc?.items || []}
+        docTitle={selectedDoc?.title || ""}
       />
     </>
   );
@@ -255,11 +255,15 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
       ref={tileRef}
       onClick={() => onClick(id)}
       type="button"
+      style={{
+        pointerEvents: title ? "auto" : "none",
+        cursor: title ? "zoom-in" : "not-allowed",
+      }}
       className="relative group overflow-hidden focus:outline-none focus-visible:outline-none hover:cursor-pointer"
     >
       {isVideo ? (
         <video
-          className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-200"
+          className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-300"
           src={url}
           muted
           loop
@@ -270,7 +274,7 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
         />
       ) : (
         <Image
-          className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-200"
+          className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-300"
           src={url}
           alt={title || "Gallery image"}
           width={width || 1200}

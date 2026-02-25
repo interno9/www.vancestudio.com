@@ -183,7 +183,7 @@ export default function Page() {
 
   return (
     <>
-      <main className="grid grid-cols-1 md:grid-cols-3">
+      <main className="grid grid-cols-3">
         {feedItems.map(
           ({ feedKey, originalId, title, url, mimeType, width, height }) => (
             <GalleryTile

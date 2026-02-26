@@ -229,6 +229,7 @@ function createFeedBatch(items, batchId) {
 
 function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
   const tileRef = useRef(null);
+  const videoRef = useRef(null);
   const [isInView, setIsInView] = useState(false);
   const isVideo = mimeType?.startsWith("video/");
 
@@ -250,6 +251,27 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!isVideo || !isInView) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.defaultMuted = true;
+    video.muted = true;
+    video.playsInline = true;
+
+    const tryPlay = () => {
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {});
+      }
+    };
+
+    tryPlay();
+    video.addEventListener("canplay", tryPlay);
+    return () => video.removeEventListener("canplay", tryPlay);
+  }, [isInView, isVideo, url]);
+
   return (
     <button
       ref={tileRef}
@@ -263,14 +285,15 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
     >
       {isVideo ? (
         <video
+          ref={videoRef}
           className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-300"
-          src={url}
+          src={isInView ? url : undefined}
           muted
           loop
-          autoPlay={isInView}
+          autoPlay
           playsInline
           controls={false}
-          preload={isInView ? "metadata" : "none"}
+          preload={isInView ? "auto" : "none"}
         />
       ) : (
         <Image

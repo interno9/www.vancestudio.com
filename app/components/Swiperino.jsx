@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { X } from "lucide-react";
 
 export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" }) {
@@ -12,7 +12,7 @@ export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" 
     return Array.from({ length: LOOP_COPIES }, () => slides).flat();
   }, [slides, canLoop]);
 
-  const recenterIfNeeded = () => {
+  const recenterIfNeeded = useCallback(() => {
     const container = scrollRef.current;
     if (!container || !canLoop) return;
 
@@ -25,7 +25,40 @@ export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" 
     const normalized =
       ((current % oneLoopWidth) + oneLoopWidth) % oneLoopWidth;
     container.scrollLeft = oneLoopWidth * Math.floor(LOOP_COPIES / 2) + normalized;
-  };
+  }, [canLoop]);
+
+  const tryPlayVideo = useCallback((video) => {
+    if (!video) return;
+    video.defaultMuted = true;
+    video.muted = true;
+    video.playsInline = true;
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {});
+    }
+  }, []);
+
+  const syncVisibleVideos = useCallback(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const videos = container.querySelectorAll("video[data-swiper-video='true']");
+
+    videos.forEach((video) => {
+      const rect = video.getBoundingClientRect();
+      const visibleWidth =
+        Math.min(rect.right, containerRect.right) - Math.max(rect.left, containerRect.left);
+      const isVisible = visibleWidth > rect.width * 0.35;
+
+      if (isVisible) {
+        tryPlayVideo(video);
+        return;
+      }
+
+      if (!video.paused) video.pause();
+    });
+  }, [tryPlayVideo]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -73,26 +106,29 @@ export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" 
     window.addEventListener("keydown", handleKeyDown);
     container.addEventListener("wheel", handleWheel, { passive: false });
     container.addEventListener("scroll", recenterIfNeeded, { passive: true });
+    container.addEventListener("scroll", syncVisibleVideos, { passive: true });
     container.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     container.style.cursor = "grab";
-    if (canLoop) {
-      requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (canLoop) {
         const oneLoopWidth = container.scrollWidth / LOOP_COPIES;
         container.scrollLeft = oneLoopWidth * Math.floor(LOOP_COPIES / 2);
-      });
-    }
+      }
+      syncVisibleVideos();
+    });
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       container.removeEventListener("wheel", handleWheel);
       container.removeEventListener("scroll", recenterIfNeeded);
+      container.removeEventListener("scroll", syncVisibleVideos);
       container.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [isOpen, onClose, canLoop]);
+  }, [isOpen, onClose, canLoop, recenterIfNeeded, syncVisibleVideos]);
 
   if (!isOpen) return null;
 
@@ -124,6 +160,9 @@ export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" 
                   autoPlay
                   muted
                   playsInline
+                  preload="metadata"
+                  data-swiper-video="true"
+                  onLoadedData={(event) => tryPlayVideo(event.currentTarget)}
                   className="h-screen w-auto max-w-none object-contain"
                 />
               ) : (

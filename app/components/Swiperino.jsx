@@ -5,7 +5,8 @@ import { X } from "lucide-react";
 export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" }) {
   const scrollRef = useRef(null);
   const dragStateRef = useRef({ active: false, x: 0, left: 0 });
-  const LOOP_COPIES = 7;
+  const syncRafRef = useRef(null);
+  const LOOP_COPIES = 5;
   const canLoop = slides.length > 1;
   const virtualSlides = useMemo(() => {
     if (!canLoop) return slides;
@@ -60,6 +61,14 @@ export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" 
     });
   }, [tryPlayVideo]);
 
+  const scheduleVideoSync = useCallback(() => {
+    if (syncRafRef.current !== null) return;
+    syncRafRef.current = requestAnimationFrame(() => {
+      syncRafRef.current = null;
+      syncVisibleVideos();
+    });
+  }, [syncVisibleVideos]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -103,10 +112,14 @@ export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" 
       container.style.cursor = "grab";
     };
 
+    const handleScroll = () => {
+      recenterIfNeeded();
+      scheduleVideoSync();
+    };
+
     window.addEventListener("keydown", handleKeyDown);
     container.addEventListener("wheel", handleWheel, { passive: false });
-    container.addEventListener("scroll", recenterIfNeeded, { passive: true });
-    container.addEventListener("scroll", syncVisibleVideos, { passive: true });
+    container.addEventListener("scroll", handleScroll, { passive: true });
     container.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
@@ -116,19 +129,22 @@ export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" 
         const oneLoopWidth = container.scrollWidth / LOOP_COPIES;
         container.scrollLeft = oneLoopWidth * Math.floor(LOOP_COPIES / 2);
       }
-      syncVisibleVideos();
+      scheduleVideoSync();
     });
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       container.removeEventListener("wheel", handleWheel);
-      container.removeEventListener("scroll", recenterIfNeeded);
-      container.removeEventListener("scroll", syncVisibleVideos);
+      container.removeEventListener("scroll", handleScroll);
       container.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      if (syncRafRef.current !== null) {
+        cancelAnimationFrame(syncRafRef.current);
+        syncRafRef.current = null;
+      }
     };
-  }, [isOpen, onClose, canLoop, recenterIfNeeded, syncVisibleVideos]);
+  }, [isOpen, onClose, canLoop, recenterIfNeeded, scheduleVideoSync]);
 
   if (!isOpen) return null;
 
@@ -156,6 +172,7 @@ export default function Swiperino({ isOpen, onClose, slides = [], docTitle = "" 
               {slide?.mimeType?.startsWith("video/") ? (
                 <video
                   src={slide.url}
+                  poster={slide.posterUrl || undefined}
                   loop
                   autoPlay
                   muted

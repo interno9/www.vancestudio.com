@@ -17,6 +17,12 @@ const query = `*[_type == "contentDocument"]{
   title,
   "url": image.asset->url,
   "mimeType": image.asset->mimeType,
+  "itemsCount": count(items[defined(coalesce(asset->url, file.asset->url))]),
+  "posterUrl": coalesce(
+    select(image.asset->mimeType match "image/*" => image.asset->url),
+    items[coalesce(asset->mimeType, file.asset->mimeType) match "image/*"][0].asset->url,
+    items[coalesce(asset->mimeType, file.asset->mimeType) match "image/*"][0].file.asset->url
+  ),
   "width": image.asset->metadata.dimensions.width,
   "height": image.asset->metadata.dimensions.height
 }`;
@@ -24,6 +30,11 @@ const query = `*[_type == "contentDocument"]{
 const detailQuery = `*[_type == "contentDocument" && _id == $id][0]{
   _id,
   title,
+  "posterUrl": coalesce(
+    select(image.asset->mimeType match "image/*" => image.asset->url),
+    items[coalesce(asset->mimeType, file.asset->mimeType) match "image/*"][0].asset->url,
+    items[coalesce(asset->mimeType, file.asset->mimeType) match "image/*"][0].file.asset->url
+  ),
   items[]{
     _key,
     "url": coalesce(asset->url, file.asset->url),
@@ -71,7 +82,28 @@ export default function Page() {
 
     let isMounted = true;
     client.fetch(detailQuery, { id: selectedId }).then((result) => {
-      if (isMounted) setSelectedDoc(result || null);
+      if (!isMounted) return;
+      if (!result) {
+        setSelectedDoc(null);
+        return;
+      }
+      const normalizedTitle = result.title?.trim() || "";
+      const rawItems = (result.items || []).filter((item) => Boolean(item?.url));
+      if (!normalizedTitle || !rawItems.length) {
+        setSelectedDoc(null);
+        return;
+      }
+      const fallbackPoster = result.posterUrl || null;
+      const items = rawItems.map((item) => ({
+        ...item,
+        posterUrl:
+          item?.mimeType?.startsWith("video/") ? fallbackPoster || item.posterUrl : undefined,
+      }));
+      setSelectedDoc({
+        ...result,
+        title: normalizedTitle,
+        items,
+      });
     });
     return () => {
       isMounted = false;
@@ -79,7 +111,12 @@ export default function Page() {
   }, [selectedId]);
 
   useEffect(() => {
-    if (!selectedId) return;
+    const hasRenderableSelection =
+      Boolean(selectedId) &&
+      selectedDoc?._id === selectedId &&
+      Boolean(selectedDoc?.title?.trim()) &&
+      (selectedDoc?.items?.length || 0) > 0;
+    if (!hasRenderableSelection) return;
 
     const originalBodyOverflow = document.body.style.overflow;
     const originalHtmlOverflow = document.documentElement.style.overflow;
@@ -90,7 +127,7 @@ export default function Page() {
       document.body.style.overflow = originalBodyOverflow;
       document.documentElement.style.overflow = originalHtmlOverflow;
     };
-  }, [selectedId]);
+  }, [selectedDoc, selectedId]);
 
   const handleImageClick = useCallback(
     (id) => {
@@ -181,17 +218,35 @@ export default function Page() {
     };
   }, [data, appendRandomBatch]);
 
+  const canOpenSwiper =
+    Boolean(selectedId) &&
+    selectedDoc?._id === selectedId &&
+    Boolean(selectedDoc?.title?.trim()) &&
+    (selectedDoc?.items?.length || 0) > 0;
+
   return (
     <>
       <main className="grid grid-cols-3">
         {feedItems.map(
-          ({ feedKey, originalId, title, url, mimeType, width, height }) => (
+          ({
+            feedKey,
+            originalId,
+            title,
+            url,
+            mimeType,
+            itemsCount,
+            posterUrl,
+            width,
+            height,
+          }) => (
             <GalleryTile
               key={feedKey}
               id={originalId}
               title={title}
               url={url}
               mimeType={mimeType}
+              itemsCount={itemsCount}
+              posterUrl={posterUrl}
               width={width}
               height={height}
               onClick={handleImageClick}
@@ -201,10 +256,10 @@ export default function Page() {
       </main>
       <div ref={sentinelRef} className="h-16 w-full" aria-hidden="true" />
       <Swiperino
-        isOpen={Boolean(selectedId)}
+        isOpen={canOpenSwiper}
         onClose={handleCloseSwiper}
-        slides={selectedDoc?.items || []}
-        docTitle={selectedDoc?.title || ""}
+        slides={canOpenSwiper ? selectedDoc?.items || [] : []}
+        docTitle={canOpenSwiper ? selectedDoc?.title || "" : ""}
       />
     </>
   );
@@ -227,11 +282,23 @@ function createFeedBatch(items, batchId) {
   }));
 }
 
-function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
+function GalleryTile({
+  id,
+  title,
+  url,
+  mimeType,
+  itemsCount,
+  posterUrl,
+  width,
+  height,
+  onClick,
+}) {
   const tileRef = useRef(null);
   const videoRef = useRef(null);
   const [isInView, setIsInView] = useState(false);
+  const [hasLoadedVideo, setHasLoadedVideo] = useState(false);
   const isVideo = mimeType?.startsWith("video/");
+  const canOpen = Boolean(title?.trim()) && (itemsCount || 0) > 0;
 
   useEffect(() => {
     const node = tileRef.current;
@@ -239,10 +306,8 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          observer.disconnect();
-        }
+        if (entry.isIntersecting) setHasLoadedVideo(true);
+        setIsInView(entry.isIntersecting);
       },
       { rootMargin: TILE_ROOT_MARGIN },
     );
@@ -252,9 +317,15 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
   }, []);
 
   useEffect(() => {
-    if (!isVideo || !isInView) return;
+    if (!isVideo) return;
     const video = videoRef.current;
     if (!video) return;
+    if (!hasLoadedVideo) return;
+
+    if (!isInView) {
+      if (!video.paused) video.pause();
+      return;
+    }
 
     video.defaultMuted = true;
     video.muted = true;
@@ -270,16 +341,19 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
     tryPlay();
     video.addEventListener("canplay", tryPlay);
     return () => video.removeEventListener("canplay", tryPlay);
-  }, [isInView, isVideo, url]);
+  }, [hasLoadedVideo, isInView, isVideo, url]);
 
   return (
     <button
       ref={tileRef}
-      onClick={() => onClick(id)}
+      onClick={() => {
+        if (!canOpen) return;
+        onClick(id);
+      }}
       type="button"
       style={{
-        pointerEvents: title ? "auto" : "none",
-        cursor: title ? "zoom-in" : "not-allowed",
+        pointerEvents: canOpen ? "auto" : "none",
+        cursor: canOpen ? "zoom-in" : "not-allowed",
       }}
       className="relative group overflow-hidden focus:outline-none focus-visible:outline-none hover:cursor-pointer"
     >
@@ -287,13 +361,14 @@ function GalleryTile({ id, title, url, mimeType, width, height, onClick }) {
         <video
           ref={videoRef}
           className="w-full aspect-square object-cover group-hover:blur-lg group-hover:scale-110 transition-all duration-300"
-          src={isInView ? url : undefined}
+          src={hasLoadedVideo ? url : undefined}
+          poster={posterUrl || undefined}
           muted
           loop
           autoPlay
           playsInline
           controls={false}
-          preload={isInView ? "auto" : "none"}
+          preload={isInView ? "metadata" : "none"}
         />
       ) : (
         <Image
